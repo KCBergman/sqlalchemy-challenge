@@ -88,8 +88,13 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    """Return a JSON list of temperature observations for the previous year."""
 
     # Query the dates and temperature observations of the most-active station for the previous year of data.
+    # Calculate the date one year from the last date in data set.
+    start_date = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+    start_date = start_date.strftime('%Y-%m-%d')
+
     most_active_stations = session.query(measurement.station, func.count(measurement.station)).\
         order_by(func.count(measurement.station).desc()).\
         group_by(measurement.station).all()
@@ -104,6 +109,14 @@ def tobs():
     year_data_most_active = dict(year_data_most_active)
 
     return jsonify(year_data_most_active)
+
+
+@app.route("/api/v1.0/<start>" and "/api/v1.0/<start>/<end>")
+def start_end():
+
+"""Return a JSON list of the minimum temperature, the average temperature, and the maximum temperature for a specified start 
+or start-end range For a specified start, calculate TMIN, TAVG, and TMAX for all the dates greater than or equal to the start date. 
+For a specified start date and end date, calculate TMIN, TAVG, and TMAX for the dates from the start date to the end date, inclusive."""
 
 
 if __name__ == '__main__':
