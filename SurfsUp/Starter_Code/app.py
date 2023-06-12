@@ -1,5 +1,4 @@
 # Import the dependencies.
-import numpy as np
 import datetime as dt
 
 from sqlalchemy.ext.automap import automap_base
@@ -16,10 +15,6 @@ from flask import Flask, jsonify
 engine = create_engine("sqlite:///Resources/hawaii.sqlite",
                        connect_args={'check_same_thread': False})
 
-# engine = create_engine(
-# 'sqlite:///restaurantmenu.db',
-# connect_args={'check_same_thread': False}
-# )
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -54,6 +49,7 @@ def homepage():
         f"/api/v1.0/tobs<br/>"
         f"/api/v1.0/tstats/&lt;start&gt;<br/>"
         f"/api/v1.0/tstats/&lt;start&gt;/&lt;end&gt;"
+
     )
 
 
@@ -62,16 +58,20 @@ def precipitation():
     """Convert the query results from your precipitation analysis (i.e. retrieve only the last 12 months of data)
        to a dictionary using date as the key and prcp as the value"""
 
-    # Query all measurements of prcp for last 12 months (queries from jupyter notebook)
+    # Find the most recent date in the data set.
     latest_row = session.query(measurement).order_by(
         measurement.id.desc()).first()
     latest_date_string = latest_row.date
     latest_date = dt.date.fromisoformat(latest_date_string)
 
+    # Calculate the date one year from the last date in data set.
     start_date = latest_date - dt.timedelta(days=365)
 
-    year_data = session.query(measurement.date, measurement.prcp).filter(
-        measurement.date >= start_date).all()
+    # query the data to get precipitation data for last 12 months
+    year_data = session.query(measurement.date, measurement.prcp)\
+        .filter(measurement.date >= start_date).all()
+
+    session.close()
 
     # Convert list of tuples into dictionary with date as key and prcp as value
     rain = dict(year_data)
@@ -96,14 +96,12 @@ def stations():
 def tobs():
     """Return a JSON list of temperature observations for the previous year."""
 
-    # Query the dates and temperature observations of the most-active station for the previous year of data.
-    # Calculate the date one year from the last date in data set.
-    latest_row_tobs = session.query(measurement).order_by(
+    # Find the most recent date in the data set; calculate start date by subtracting 365 days from the latest date; find most active stations
+    latest_row = session.query(measurement).order_by(
         measurement.id.desc()).first()
-    latest_date_tobs_string = latest_row_tobs.date
-    latest_date_tobs = dt.date.fromisoformat(latest_date_tobs_string)
-
-    start_date_tobs = latest_date_tobs - dt.timedelta(days=365)
+    latest_date_string = latest_row.date
+    latest_date = dt.date.fromisoformat(latest_date_string)
+    start_date = latest_date - dt.timedelta(days=365)
 
     most_active_stations = session.query(measurement.station, func.count(measurement.station)).\
         order_by(func.count(measurement.station).desc()).\
@@ -111,9 +109,12 @@ def tobs():
 
     most_active_station = most_active_stations[0][0]
 
+    # Create a query that finds the TOBS and filter by start date variable
     year_data_most_active = session.query(measurement.date, measurement.tobs).\
-        filter(measurement.date >= start_date_tobs).\
+        filter(measurement.date >= start_date).\
         filter(measurement.station == most_active_station).all()
+
+    session.close()
 
     # Return a JSON list of temperature observations for the previous year.
     year_data_most_active = dict(year_data_most_active)
@@ -134,6 +135,8 @@ def tstats(start, end=None):
     temp_stats = session.query(func.min(measurement.tobs), func.max(measurement.tobs), func.avg(measurement.tobs))\
         .filter(measurement.date >= start)\
         .filter(measurement.date <= end).all()
+
+    session.close()
 
     temp_stats_values = []
     for min, avg, max in temp_stats:
